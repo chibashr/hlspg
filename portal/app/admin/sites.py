@@ -25,6 +25,18 @@ def list_sites():
             'access_methods': s.access_methods or [],
             'proxy_url': s.proxy_url,
             'sign_on_method': s.sign_on_method,
+            'console_enabled': s.console_enabled or False,
+            'console_type': s.console_type,
+            'console_url': s.console_url,
+            'inline_web_url': s.inline_web_url,
+            'inline_ssh_url': s.inline_ssh_url,
+            'inline_vnc_url': s.inline_vnc_url,
+            'inline_proxy_mode': s.inline_proxy_mode,
+            'inline_proxy_auth': s.inline_proxy_auth,
+            'inline_proxy_instructions': s.inline_proxy_instructions,
+            'requires_user_credential': s.requires_user_credential or False,
+            'required_credential_type': s.required_credential_type,
+            'inline_console_height': s.inline_console_height,
             'created_at': s.created_at.isoformat() if s.created_at else None
         } for s in sites]
     }), 200
@@ -48,10 +60,26 @@ def create_site():
     if not validate_proxied_url(url):
         return jsonify({'error': 'URL not in allowed proxied hosts'}), 400
     
+    optional_urls = {
+        'proxy_url': data.get('proxy_url'),
+        'console_url': data.get('console_url'),
+        'inline_web_url': data.get('inline_web_url'),
+        'inline_ssh_url': data.get('inline_ssh_url'),
+        'inline_vnc_url': data.get('inline_vnc_url'),
+    }
+    for field_name, field_value in optional_urls.items():
+        if field_value and not validate_proxied_url(field_value):
+            return jsonify({'error': f'{field_name} not in allowed proxied hosts'}), 400
+    
     # Check if site with URL already exists
     existing = Site.query.filter_by(url=url).first()
     if existing:
         return jsonify({'error': 'Site with this URL already exists'}), 409
+    
+    inline_proxy_mode = data.get('inline_proxy_mode') or 'none'
+    inline_proxy_auth = data.get('inline_proxy_auth') or 'none'
+    requires_user_credential = bool(data.get('requires_user_credential', False))
+    inline_console_height = data.get('inline_console_height') or 480
     
     site = Site(
         name=name,
@@ -63,7 +91,19 @@ def create_site():
         ssh_path=data.get('ssh_path'),
         access_methods=data.get('access_methods', []),
         proxy_url=data.get('proxy_url'),
-        sign_on_method=data.get('sign_on_method')
+        sign_on_method=data.get('sign_on_method'),
+        console_enabled=data.get('console_enabled', False),
+        console_type=data.get('console_type'),
+        console_url=data.get('console_url'),
+        inline_web_url=data.get('inline_web_url'),
+        inline_ssh_url=data.get('inline_ssh_url'),
+        inline_vnc_url=data.get('inline_vnc_url'),
+        inline_proxy_mode=inline_proxy_mode,
+        inline_proxy_auth=inline_proxy_auth,
+        inline_proxy_instructions=data.get('inline_proxy_instructions'),
+        requires_user_credential=requires_user_credential,
+        required_credential_type=data.get('required_credential_type'),
+        inline_console_height=inline_console_height
     )
     
     db.session.add(site)
@@ -77,7 +117,19 @@ def create_site():
         'visible': site.visible,
         'access_methods': site.access_methods or [],
         'proxy_url': site.proxy_url,
-        'sign_on_method': site.sign_on_method
+        'sign_on_method': site.sign_on_method,
+        'console_enabled': site.console_enabled or False,
+        'console_type': site.console_type,
+        'console_url': site.console_url,
+        'inline_web_url': site.inline_web_url,
+        'inline_ssh_url': site.inline_ssh_url,
+        'inline_vnc_url': site.inline_vnc_url,
+        'inline_proxy_mode': site.inline_proxy_mode,
+        'inline_proxy_auth': site.inline_proxy_auth,
+        'inline_proxy_instructions': site.inline_proxy_instructions,
+        'requires_user_credential': site.requires_user_credential or False,
+        'required_credential_type': site.required_credential_type,
+        'inline_console_height': site.inline_console_height
     }), 201
 
 
@@ -115,6 +167,18 @@ def get_site(site_id):
         'access_methods': site.access_methods or [],
         'proxy_url': site.proxy_url,
         'sign_on_method': site.sign_on_method,
+        'console_enabled': site.console_enabled or False,
+        'console_type': site.console_type,
+        'console_url': site.console_url,
+        'inline_web_url': site.inline_web_url,
+        'inline_ssh_url': site.inline_ssh_url,
+        'inline_vnc_url': site.inline_vnc_url,
+        'inline_proxy_mode': site.inline_proxy_mode,
+        'inline_proxy_auth': site.inline_proxy_auth,
+        'inline_proxy_instructions': site.inline_proxy_instructions,
+        'requires_user_credential': site.requires_user_credential or False,
+        'required_credential_type': site.required_credential_type,
+        'inline_console_height': site.inline_console_height,
         'groups': groups,
         'roles': [{
             'id': r.id,
@@ -158,9 +222,44 @@ def update_site(site_id):
     if 'access_methods' in data:
         site.access_methods = data['access_methods'] if isinstance(data['access_methods'], list) else []
     if 'proxy_url' in data:
-        site.proxy_url = data['proxy_url'] or None
+        new_proxy_url = data['proxy_url']
+        if new_proxy_url and not validate_proxied_url(new_proxy_url):
+            return jsonify({'error': 'proxy_url not in allowed proxied hosts'}), 400
+        site.proxy_url = new_proxy_url or None
     if 'sign_on_method' in data:
         site.sign_on_method = data['sign_on_method'] or None
+    if 'console_enabled' in data:
+        site.console_enabled = data['console_enabled'] or False
+    if 'console_type' in data:
+        site.console_type = data['console_type'] or None
+    if 'console_url' in data:
+        new_console_url = data['console_url']
+        if new_console_url and not validate_proxied_url(new_console_url):
+            return jsonify({'error': 'console_url not in allowed proxied hosts'}), 400
+        site.console_url = new_console_url or None
+    url_fields = [
+        ('inline_web_url', data.get('inline_web_url') if 'inline_web_url' in data else None),
+        ('inline_ssh_url', data.get('inline_ssh_url') if 'inline_ssh_url' in data else None),
+        ('inline_vnc_url', data.get('inline_vnc_url') if 'inline_vnc_url' in data else None),
+    ]
+    for field_name, field_value in url_fields:
+        if field_value is None:
+            continue
+        if field_value and not validate_proxied_url(field_value):
+            return jsonify({'error': f'{field_name} not in allowed proxied hosts'}), 400
+        setattr(site, field_name, field_value or None)
+    if 'inline_proxy_mode' in data:
+        site.inline_proxy_mode = data['inline_proxy_mode'] or 'none'
+    if 'inline_proxy_auth' in data:
+        site.inline_proxy_auth = data['inline_proxy_auth'] or 'none'
+    if 'inline_proxy_instructions' in data:
+        site.inline_proxy_instructions = data['inline_proxy_instructions']
+    if 'requires_user_credential' in data:
+        site.requires_user_credential = bool(data['requires_user_credential'])
+    if 'required_credential_type' in data:
+        site.required_credential_type = data['required_credential_type'] or None
+    if 'inline_console_height' in data:
+        site.inline_console_height = data['inline_console_height'] or 480
     
     db.session.commit()
     
@@ -173,7 +272,19 @@ def update_site(site_id):
         'ssh_path': site.ssh_path,
         'access_methods': site.access_methods or [],
         'proxy_url': site.proxy_url,
-        'sign_on_method': site.sign_on_method
+        'sign_on_method': site.sign_on_method,
+        'console_enabled': site.console_enabled or False,
+        'console_type': site.console_type,
+        'console_url': site.console_url,
+        'inline_web_url': site.inline_web_url,
+        'inline_ssh_url': site.inline_ssh_url,
+        'inline_vnc_url': site.inline_vnc_url,
+        'inline_proxy_mode': site.inline_proxy_mode,
+        'inline_proxy_auth': site.inline_proxy_auth,
+        'inline_proxy_instructions': site.inline_proxy_instructions,
+        'requires_user_credential': site.requires_user_credential or False,
+        'required_credential_type': site.required_credential_type,
+        'inline_console_height': site.inline_console_height
     }), 200
 
 

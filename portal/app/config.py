@@ -73,16 +73,6 @@ class Config:
     INITIAL_LOCAL_ADMIN_PASSWORD = os.getenv('INITIAL_LOCAL_ADMIN_PASSWORD', '')
     ALLOW_LOCAL_FALLBACK = os.getenv('ALLOW_LOCAL_FALLBACK', 'true').lower() == 'true'
     
-    # OIDC (optional - for SSO configuration)
-    OIDC_ISSUER_URL = os.getenv('OIDC_ISSUER_URL', '')
-    OIDC_CLIENT_ID = os.getenv('OIDC_CLIENT_ID', '')
-    OIDC_CLIENT_SECRET = os.getenv('OIDC_CLIENT_SECRET', '')
-    # Legacy Keycloak support (deprecated - use OIDC_* instead)
-    KEYCLOAK_URL = os.getenv('KEYCLOAK_URL', '')  # Deprecated
-    KEYCLOAK_CLIENT_ID = os.getenv('KEYCLOAK_CLIENT_ID', '')  # Deprecated
-    KEYCLOAK_CLIENT_SECRET = os.getenv('KEYCLOAK_CLIENT_SECRET', '')  # Deprecated
-    KEYCLOAK_REALM = os.getenv('KEYCLOAK_REALM', '')  # Deprecated
-    
     # Rate Limiting
     RATE_LIMIT_REQUESTS = int(os.getenv('RATE_LIMIT_REQUESTS', '10'))
     RATE_LIMIT_PERIOD = int(os.getenv('RATE_LIMIT_PERIOD', '60'))

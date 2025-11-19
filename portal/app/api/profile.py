@@ -2,7 +2,7 @@
 from flask import jsonify, session, request
 from . import api_bp
 from ..db import db
-from ..models import User, AuditLog
+from ..models import User, AuditLog, SSOConfig
 from ..utils.rbac import get_user_roles
 from ..utils.security import hash_password, verify_password
 
@@ -22,6 +22,10 @@ def get_profile():
     if user.is_local_admin:
         roles.append('admin')
     
+    # Get SSO account settings URL if configured
+    sso_config = SSOConfig.query.filter_by(id=1).first()
+    sso_account_settings_url = sso_config.account_settings_url if sso_config and sso_config.account_settings_url else None
+    
     return jsonify({
         'user': {
             'id': user.id,
@@ -34,7 +38,8 @@ def get_profile():
             'auth_type': 'LDAP' if user.dn else 'Local'  # Authentication type indicator
         },
         'roles': roles,
-        'groups': user.cached_groups or []
+        'groups': user.cached_groups or [],
+        'sso_account_settings_url': sso_account_settings_url
     }), 200
 
 

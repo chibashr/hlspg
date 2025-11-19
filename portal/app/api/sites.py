@@ -4,6 +4,7 @@ from . import api_bp
 from ..db import db
 from ..models import User, Site, GroupSiteMap, LDAPGroup
 from ..utils.rbac import get_user_roles
+from ..utils.site_tokens import resolve_site_tokens
 
 
 @api_bp.route('/sites', methods=['GET'])
@@ -62,16 +63,32 @@ def get_accessible_sites():
         Site.visible == True
     ).all()
     
-    return jsonify({
-        'sites': [{
+    site_payloads = []
+    for s in sites:
+        site_payloads.append({
             'id': s.id,
             'name': s.name,
             'url': s.url,
             'description': s.description,
             'health_url': s.health_url,
             'access_methods': s.access_methods or [],
-            'proxy_url': s.proxy_url,
-            'sign_on_method': s.sign_on_method
-        } for s in sites]
-    }), 200
+            'proxy_url': resolve_site_tokens(s.proxy_url, s),
+            'sign_on_method': s.sign_on_method,
+            'console_enabled': s.console_enabled or False,
+            'console_type': s.console_type,
+            'console_url': resolve_site_tokens(s.console_url, s),
+            'ssh_path': s.ssh_path,
+            'inline_web_url': resolve_site_tokens(s.inline_web_url, s),
+            'inline_ssh_url': resolve_site_tokens(s.inline_ssh_url, s),
+            'inline_vnc_url': resolve_site_tokens(s.inline_vnc_url, s),
+            'inline_proxy_mode': s.inline_proxy_mode,
+            'inline_proxy_auth': s.inline_proxy_auth,
+            'inline_proxy_instructions': s.inline_proxy_instructions,
+            'inline_proxy_instructions_resolved': resolve_site_tokens(s.inline_proxy_instructions, s),
+            'requires_user_credential': s.requires_user_credential or False,
+            'required_credential_type': s.required_credential_type,
+            'inline_console_height': s.inline_console_height
+        })
+
+    return jsonify({'sites': site_payloads}), 200
 

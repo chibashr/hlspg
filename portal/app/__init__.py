@@ -3,6 +3,7 @@ from flask import Flask
 from flask_talisman import Talisman
 from flask_wtf.csrf import CSRFProtect
 from flask_cors import CORS
+from flask_socketio import SocketIO
 from .config import Config
 from .db import init_db
 from .logging_config import setup_logging
@@ -85,6 +86,7 @@ def create_app(config_class=Config):
             'style-src': "'self' 'unsafe-inline'",
             'img-src': "'self' data:",
             'font-src': "'self'",
+            'frame-src': "'self' https:",  # Allow same-origin and HTTPS external iframes for inline consoles
         }
     )
     
@@ -216,8 +218,50 @@ def create_app(config_class=Config):
     from .cli import register_commands
     register_commands(app)
     
+    # Initialize SocketIO for WebSocket support
+    socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
+    
+    # Register SocketIO event handlers
+    @socketio.on('connect')
+    def handle_connect():
+        """Handle WebSocket connection."""
+        from flask import session
+        user_id = session.get('user_id')
+        if not user_id:
+            return False
+        return True
+    
+    @socketio.on('ssh_connect')
+    def handle_ssh_connect(data):
+        """Handle SSH connection request."""
+        from .api.ssh import handle_ssh_connect
+        from flask import request
+        handle_ssh_connect(socketio, data, request.sid)
+    
+    @socketio.on('ssh_input')
+    def handle_ssh_input(data):
+        """Handle SSH input."""
+        from .api.ssh import handle_ssh_input
+        from flask import request
+        connection_id = data.get('connection_id')
+        handle_ssh_input(socketio, connection_id, data, request.sid)
+    
+    @socketio.on('ssh_disconnect')
+    def handle_ssh_disconnect(data):
+        """Handle SSH disconnection."""
+        from .api.ssh import handle_ssh_disconnect
+        connection_id = data.get('connection_id')
+        handle_ssh_disconnect(connection_id)
+    
+    @socketio.on('disconnect')
+    def handle_disconnect():
+        """Handle WebSocket disconnection."""
+        pass
+    
     # Bootstrap on first run
     with app.app_context():
         bootstrap_app(db)
     
+    # Store socketio in app for access
+    app.socketio = socketio
     return app
