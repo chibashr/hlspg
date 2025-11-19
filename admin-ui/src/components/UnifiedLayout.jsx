@@ -55,6 +55,8 @@ const adminMenuItems = [
 // User menu items (accessible to all authenticated users)
 const userMenuItems = [
   { text: 'Portal', icon: <DashboardIcon />, path: 'portal' },
+  { text: 'Profile', icon: <PeopleIcon />, path: 'profile' },
+  { text: 'Credentials', icon: <VpnKeyIcon />, path: 'credentials' },
 ]
 
 export default function UnifiedLayout({ webappConfig }) {
@@ -144,35 +146,6 @@ export default function UnifiedLayout({ webappConfig }) {
 
   const drawer = (
     <Box>
-      <Toolbar
-        sx={{
-          background: mode === 'light'
-            ? `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.secondary.main} 100%)`
-            : `linear-gradient(135deg, ${theme.palette.primary.dark} 0%, ${theme.palette.secondary.dark} 100%)`,
-          color: '#fff',
-        }}
-      >
-        {webappConfig?.logo_url ? (
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
-            <img
-              src={webappConfig.logo_url}
-              alt="Logo"
-              style={{ maxHeight: 32, maxWidth: 120 }}
-              onError={(e) => {
-                e.target.style.display = 'none'
-              }}
-            />
-            <Typography variant="h6" noWrap component="div" sx={{ color: '#fff' }}>
-              {webappConfig.app_title || 'HLSPG'}
-            </Typography>
-          </Box>
-        ) : (
-          <Typography variant="h6" noWrap component="div" sx={{ color: '#fff' }}>
-            {webappConfig?.app_title || 'HLSPG'}
-          </Typography>
-        )}
-      </Toolbar>
-      <Divider />
       <List>
         {menuItems.map((item) => {
           const isSelected = location.pathname === item.fullPath || 

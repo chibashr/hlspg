@@ -4,6 +4,9 @@ import redis
 from functools import wraps
 from flask import request, jsonify, current_app
 from datetime import timedelta
+from cryptography.fernet import Fernet
+import base64
+import hashlib
 
 
 def hash_password(password):
@@ -17,6 +20,36 @@ def verify_password(password, hashed):
         return bcrypt.checkpw(password.encode('utf-8'), hashed.encode('utf-8'))
     except Exception:
         return False
+
+
+def _get_encryption_key():
+    """Get encryption key from Flask secret key."""
+    secret_key = current_app.config.get('SECRET_KEY', 'default-secret-key-change-me')
+    # Derive a 32-byte key from the secret key
+    key = hashlib.sha256(secret_key.encode()).digest()
+    return base64.urlsafe_b64encode(key)
+
+
+def encrypt_password(password):
+    """Encrypt a password for storage."""
+    try:
+        key = _get_encryption_key()
+        f = Fernet(key)
+        return f.encrypt(password.encode('utf-8')).decode('utf-8')
+    except Exception as e:
+        current_app.logger.error(f"Password encryption failed: {str(e)}")
+        raise
+
+
+def decrypt_password(encrypted_password):
+    """Decrypt a stored password."""
+    try:
+        key = _get_encryption_key()
+        f = Fernet(key)
+        return f.decrypt(encrypted_password.encode('utf-8')).decode('utf-8')
+    except Exception as e:
+        current_app.logger.error(f"Password decryption failed: {str(e)}")
+        raise
 
 
 def get_redis_client():

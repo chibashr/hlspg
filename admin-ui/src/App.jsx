@@ -7,6 +7,8 @@ import Login from './pages/Login'
 import Setup from './pages/Setup'
 import Dashboard from './pages/Dashboard'
 import UserPortal from './pages/UserPortal'
+import Profile from './pages/Profile'
+import Credentials from './pages/Credentials'
 import LDAPSetup from './pages/LDAPSetup'
 import LDAPConfig from './pages/LDAPConfig'
 import RoleManagement from './pages/RoleManagement'
@@ -57,6 +59,8 @@ function App() {
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="portal" element={<UserPortal />} />
+            <Route path="profile" element={<Profile />} />
+            <Route path="credentials" element={<Credentials />} />
             <Route path="ldap" element={<LDAPSetup />} />
             <Route path="ldap-config" element={<LDAPConfig />} />
             <Route path="roles" element={<RoleManagement />} />

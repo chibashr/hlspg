@@ -1,8 +1,16 @@
 """SQLAlchemy models for HLSPG."""
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text, JSON, ForeignKey, UniqueConstraint, CheckConstraint
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text, JSON, ForeignKey, UniqueConstraint, CheckConstraint, Table
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from .db import db
+
+# Association table for credential-site relationships
+credential_site_association = Table(
+    'credential_site_associations',
+    db.Model.metadata,
+    Column('credential_id', Integer, ForeignKey('user_credentials.id', ondelete='CASCADE'), primary_key=True),
+    Column('site_id', Integer, ForeignKey('sites.id', ondelete='CASCADE'), primary_key=True)
+)
 
 
 class Role(db.Model):
@@ -61,10 +69,23 @@ class Site(db.Model):
     access_methods = Column(JSON)  # List of access methods (e.g., ["HTTPS", "SSH", "RDP"])
     proxy_url = Column(String(1024))  # Optional proxy endpoint URL
     sign_on_method = Column(String(255))  # Sign-on method description (e.g., "RADIUS", "LDAP", "OAuth")
+    console_enabled = Column(Boolean, default=False)  # Enable/disable console access
+    console_type = Column(String(50))  # Console type: 'html5' or 'ssh' or NULL
+    console_url = Column(String(1024))  # URL for HTML5 console embedding (for iLO/ESXi)
+    inline_web_url = Column(String(1024))
+    inline_ssh_url = Column(String(1024))
+    inline_vnc_url = Column(String(1024))
+    inline_proxy_mode = Column(String(50), default='none')  # none, direct, reverse_http, ssh_tunnel
+    inline_proxy_auth = Column(String(50), default='none')  # none, basic, ssh_key, certificate
+    inline_proxy_instructions = Column(Text)
+    requires_user_credential = Column(Boolean, default=False)
+    required_credential_type = Column(String(50))  # ssh_key, certificate
+    inline_console_height = Column(Integer, default=480)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
     
     group_mappings = relationship('GroupSiteMap', back_populates='site', cascade='all, delete-orphan')
+    associated_credentials = relationship('UserCredential', secondary=credential_site_association, back_populates='associated_sites')
 
 
 class GroupSiteMap(db.Model):
@@ -100,6 +121,22 @@ class User(db.Model):
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
     
     audit_logs = relationship('AuditLog', back_populates='user')
+    credentials = relationship('UserCredential', back_populates='user', cascade='all, delete-orphan')
+
+
+class UserCredential(db.Model):
+    """User-provided credentials (SSH keys, certificates, etc.)."""
+    __tablename__ = 'user_credentials'
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
+    credential_type = Column(String(50), nullable=False)  # ssh_key, certificate
+    name = Column(String(255), nullable=False)
+    data = Column(Text, nullable=False)  # Stored credential (e.g., public key, cert bundle)
+    created_at = Column(DateTime, server_default=func.now())
+
+    user = relationship('User', back_populates='credentials')
+    associated_sites = relationship('Site', secondary=credential_site_association, back_populates='associated_credentials')
 
 
 class AuditLog(db.Model):
@@ -165,23 +202,11 @@ class WebAppConfig(db.Model):
 
 
 class SSOConfig(db.Model):
-    """SSO configuration (OIDC, etc.)."""
+    """SSO configuration - simple URL for account settings."""
     __tablename__ = 'sso_config'
     
     id = Column(Integer, primary_key=True)
-    provider = Column(String(50), default='oidc')  # oidc, saml
-    enabled = Column(Boolean, default=False)
-    issuer_url = Column(String(1024))  # OIDC Issuer URL (for discovery)
-    authorization_endpoint = Column(String(1024))  # Optional: explicit auth endpoint
-    token_endpoint = Column(String(1024))  # Optional: explicit token endpoint
-    userinfo_endpoint = Column(String(1024))  # Optional: explicit userinfo endpoint
-    client_id = Column(String(255))
-    client_secret = Column(Text)  # Encrypted or plain (admin-only access)
-    redirect_uri = Column(String(1024))
-    scopes = Column(String(255), default='openid profile email')  # Space-separated
-    # Legacy fields for backward compatibility
-    sso_url = Column(String(1024))  # Deprecated: use issuer_url
-    realm = Column(String(255))  # Deprecated: Keycloak-specific
+    account_settings_url = Column(String(1024))  # URL to SSO account settings page
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
     

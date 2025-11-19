@@ -21,11 +21,31 @@ import {
   Checkbox,
   FormControlLabel,
   MenuItem,
+  Divider,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  Tooltip,
+  Popover,
 } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
 import EditIcon from '@mui/icons-material/Edit'
 import DeleteIcon from '@mui/icons-material/Delete'
+import InfoIcon from '@mui/icons-material/Info'
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import axios from 'axios'
+
+const SITE_TOKENS = [
+  { token: '${NAME}', desc: 'Site name' },
+  { token: '${URL}', desc: 'Primary site URL' },
+  { token: '${PROXY_URL}', desc: 'Proxy endpoint URL' },
+  { token: '${SSH_PATH}', desc: 'SSH path (e.g., user@host)' },
+  { token: '${INLINE_WEB_URL}', desc: 'Inline web URL' },
+  { token: '${INLINE_SSH_URL}', desc: 'Inline SSH URL' },
+  { token: '${INLINE_VNC_URL}', desc: 'Inline VNC URL' },
+  { token: '${CONSOLE_URL}', desc: 'Console URL' },
+  { token: '${SIGN_ON_METHOD}', desc: 'Sign-on method label' },
+]
 
 export default function SiteManagement() {
   const [sites, setSites] = useState([])
@@ -45,9 +65,22 @@ export default function SiteManagement() {
     access_methods: [],
     proxy_url: '',
     sign_on_method: '',
+    console_enabled: false,
+    console_type: '',
+    console_url: '',
+    inline_web_url: '',
+    inline_ssh_url: '',
+    inline_vnc_url: '',
+    inline_proxy_mode: 'none',
+    inline_proxy_auth: 'none',
+    inline_proxy_instructions: '',
+    requires_user_credential: false,
+    required_credential_type: '',
+    inline_console_height: 480,
   })
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [tokenInfoAnchor, setTokenInfoAnchor] = useState(null)
 
   useEffect(() => {
     loadSites()
@@ -117,6 +150,18 @@ export default function SiteManagement() {
         access_methods: site.access_methods || [],
         proxy_url: site.proxy_url || '',
         sign_on_method: site.sign_on_method || '',
+        console_enabled: site.console_enabled || false,
+        console_type: site.console_type || '',
+        console_url: site.console_url || '',
+        inline_web_url: site.inline_web_url || '',
+        inline_ssh_url: site.inline_ssh_url || '',
+        inline_vnc_url: site.inline_vnc_url || '',
+        inline_proxy_mode: site.inline_proxy_mode || 'none',
+        inline_proxy_auth: site.inline_proxy_auth || 'none',
+        inline_proxy_instructions: site.inline_proxy_instructions || '',
+        requires_user_credential: site.requires_user_credential || false,
+        required_credential_type: site.required_credential_type || '',
+        inline_console_height: site.inline_console_height || 480,
       })
     } else {
       setEditingSite(null)
@@ -131,6 +176,18 @@ export default function SiteManagement() {
         access_methods: [],
         proxy_url: '',
         sign_on_method: '',
+        console_enabled: false,
+        console_type: '',
+        console_url: '',
+        inline_web_url: '',
+        inline_ssh_url: '',
+        inline_vnc_url: '',
+        inline_proxy_mode: 'none',
+        inline_proxy_auth: 'none',
+        inline_proxy_instructions: '',
+        requires_user_credential: false,
+        required_credential_type: '',
+        inline_console_height: 480,
       })
     }
     setOpenDialog(true)
@@ -210,6 +267,7 @@ export default function SiteManagement() {
                 <TableCell>Access Methods</TableCell>
                 <TableCell>Proxy</TableCell>
                 <TableCell>Sign-On</TableCell>
+                <TableCell>Console</TableCell>
                 <TableCell>Visible</TableCell>
                 <TableCell>Actions</TableCell>
               </TableRow>
@@ -217,7 +275,7 @@ export default function SiteManagement() {
             <TableBody>
               {sites.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} align="center">
+                  <TableCell colSpan={8} align="center">
                     No sites found. Create one to get started.
                   </TableCell>
                 </TableRow>
@@ -243,6 +301,17 @@ export default function SiteManagement() {
                     </TableCell>
                     <TableCell>{site.proxy_url || 'N/A'}</TableCell>
                     <TableCell>{site.sign_on_method || 'N/A'}</TableCell>
+                    <TableCell>
+                      {site.console_enabled ? (
+                        <Chip
+                          label={site.console_type === 'html5' ? 'HTML5' : site.console_type === 'ssh' ? 'SSH' : 'Console'}
+                          size="small"
+                          color="primary"
+                        />
+                      ) : (
+                        'N/A'
+                      )}
+                    </TableCell>
                     <TableCell>
                       <Chip
                         label={site.visible ? 'Visible' : 'Hidden'}
@@ -290,108 +359,291 @@ export default function SiteManagement() {
       <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="md" fullWidth>
         <DialogTitle>{editingSite ? 'Edit Site' : 'Create Site'}</DialogTitle>
         <DialogContent>
-          <TextField
-            fullWidth
-            label="Name"
-            value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            margin="normal"
-            required
-          />
-          <TextField
-            fullWidth
-            label="URL"
-            value={formData.url}
-            onChange={(e) => setFormData({ ...formData, url: e.target.value })}
-            margin="normal"
-            required
-            helperText="Must be in allowed proxied hosts"
-          />
-          <TextField
-            fullWidth
-            label="Description"
-            value={formData.description}
-            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            margin="normal"
-            multiline
-            rows={3}
-          />
-          <TextField
-            fullWidth
-            label="Health Check URL (optional)"
-            value={formData.health_url}
-            onChange={(e) => setFormData({ ...formData, health_url: e.target.value })}
-            margin="normal"
-          />
-          <TextField
-            fullWidth
-            label="Owner"
-            value={formData.owner}
-            onChange={(e) => setFormData({ ...formData, owner: e.target.value })}
-            margin="normal"
-          />
-          <TextField
-            fullWidth
-            label="SSH Path (optional)"
-            value={formData.ssh_path}
-            onChange={(e) => setFormData({ ...formData, ssh_path: e.target.value })}
-            margin="normal"
-            helperText="SSH connection path (e.g., user@hostname or hostname)"
-            placeholder="user@example.com"
-          />
-          <Box sx={{ mt: 2, mb: 2 }}>
-            <Typography variant="subtitle2" gutterBottom>
-              Access Methods
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-              Select one or more access methods for this site
-            </Typography>
-            {['HTTPS', 'HTTP', 'SSH', 'RDP', 'VNC', 'FTP', 'SFTP', 'Other'].map((method) => (
+          <Accordion defaultExpanded>
+            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>Basic Information</Typography>
+            </AccordionSummary>
+            <AccordionDetails>
+              <TextField
+                fullWidth
+                label="Name"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                margin="normal"
+                required
+              />
+              <TextField
+                fullWidth
+                label="URL"
+                value={formData.url}
+                onChange={(e) => setFormData({ ...formData, url: e.target.value })}
+                margin="normal"
+                required
+                helperText="Must be in allowed proxied hosts"
+              />
+              <TextField
+                fullWidth
+                label="Description"
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                margin="normal"
+                multiline
+                rows={3}
+              />
+              <TextField
+                fullWidth
+                label="Health Check URL (optional)"
+                value={formData.health_url}
+                onChange={(e) => setFormData({ ...formData, health_url: e.target.value })}
+                margin="normal"
+              />
+              <TextField
+                fullWidth
+                label="Owner"
+                value={formData.owner}
+                onChange={(e) => setFormData({ ...formData, owner: e.target.value })}
+                margin="normal"
+              />
+              <TextField
+                fullWidth
+                label="SSH Path (optional)"
+                value={formData.ssh_path}
+                onChange={(e) => setFormData({ ...formData, ssh_path: e.target.value })}
+                margin="normal"
+                helperText="SSH connection path (e.g., user@hostname or hostname)"
+                placeholder="user@example.com"
+              />
               <FormControlLabel
-                key={method}
                 control={
                   <Checkbox
-                    checked={formData.access_methods.includes(method)}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setFormData({ ...formData, access_methods: [...formData.access_methods, method] })
-                      } else {
-                        setFormData({ ...formData, access_methods: formData.access_methods.filter(m => m !== method) })
-                      }
-                    }}
+                    checked={formData.visible}
+                    onChange={(e) => setFormData({ ...formData, visible: e.target.checked })}
                   />
                 }
-                label={method}
+                label="Visible to users"
               />
-            ))}
-          </Box>
-          <TextField
-            fullWidth
-            label="Proxy URL (optional)"
-            value={formData.proxy_url}
-            onChange={(e) => setFormData({ ...formData, proxy_url: e.target.value })}
-            margin="normal"
-            helperText="Proxy endpoint URL for accessing this site"
-            placeholder="https://proxy.example.com/site"
-          />
-          <TextField
-            fullWidth
-            label="Sign-On Method (optional)"
-            value={formData.sign_on_method}
-            onChange={(e) => setFormData({ ...formData, sign_on_method: e.target.value })}
-            margin="normal"
-            helperText="Authentication method description (e.g., RADIUS, LDAP, OAuth, SAML)"
-            placeholder="LDAP"
-          />
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={formData.visible}
-                onChange={(e) => setFormData({ ...formData, visible: e.target.checked })}
+            </AccordionDetails>
+          </Accordion>
+
+          <Accordion>
+            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>Access Configuration</Typography>
+            </AccordionSummary>
+            <AccordionDetails>
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="subtitle2" gutterBottom>
+                  Access Methods
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                  Select one or more access methods for this site
+                </Typography>
+                {['HTTPS', 'HTTP', 'SSH', 'RDP', 'VNC', 'FTP', 'SFTP', 'Other'].map((method) => (
+                  <FormControlLabel
+                    key={method}
+                    control={
+                      <Checkbox
+                        checked={formData.access_methods.includes(method)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setFormData({ ...formData, access_methods: [...formData.access_methods, method] })
+                          } else {
+                            setFormData({ ...formData, access_methods: formData.access_methods.filter(m => m !== method) })
+                          }
+                        }}
+                      />
+                    }
+                    label={method}
+                  />
+                ))}
+              </Box>
+              <TextField
+                fullWidth
+                label="Proxy URL (optional)"
+                value={formData.proxy_url}
+                onChange={(e) => setFormData({ ...formData, proxy_url: e.target.value })}
+                margin="normal"
+                helperText="Proxy endpoint URL for accessing this site"
+                placeholder="https://proxy.example.com/site"
               />
-            }
-            label="Visible to users"
-          />
+              <TextField
+                fullWidth
+                label="Sign-On Method (optional)"
+                value={formData.sign_on_method}
+                onChange={(e) => setFormData({ ...formData, sign_on_method: e.target.value })}
+                margin="normal"
+                helperText="Authentication method description (e.g., RADIUS, LDAP, OAuth, SAML)"
+                placeholder="LDAP"
+              />
+            </AccordionDetails>
+          </Accordion>
+
+          <Accordion>
+            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>Legacy Console Access</Typography>
+            </AccordionSummary>
+            <AccordionDetails>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={formData.console_enabled}
+                    onChange={(e) => setFormData({ ...formData, console_enabled: e.target.checked })}
+                  />
+                }
+                label="Enable legacy console access"
+              />
+              {formData.console_enabled && (
+                <Box sx={{ mt: 2 }}>
+                  <TextField
+                    fullWidth
+                    select
+                    label="Console Type"
+                    value={formData.console_type}
+                    onChange={(e) => setFormData({ ...formData, console_type: e.target.value })}
+                    margin="normal"
+                    SelectProps={{
+                      native: true,
+                    }}
+                  >
+                    <option value="">Select console type</option>
+                    <option value="html5">HTML5 (iLO/ESXi)</option>
+                    <option value="ssh">SSH Terminal</option>
+                  </TextField>
+                  {formData.console_type === 'html5' && (
+                    <TextField
+                      fullWidth
+                      label="Console URL"
+                      value={formData.console_url}
+                      onChange={(e) => setFormData({ ...formData, console_url: e.target.value })}
+                      margin="normal"
+                      helperText="URL for HTML5 console embedding (e.g., https://ilo.example.com/html5)"
+                      placeholder="https://ilo.example.com/html5"
+                    />
+                  )}
+                  {formData.console_type === 'ssh' && (
+                    <Alert severity="info" sx={{ mt: 1 }}>
+                      SSH console will use the SSH Path configured above. Users will enter credentials directly in the terminal.
+                    </Alert>
+                  )}
+                </Box>
+              )}
+            </AccordionDetails>
+          </Accordion>
+
+          <Accordion>
+            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+              <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 600, flexGrow: 1 }}>Inline Consoles</Typography>
+                <Tooltip title="Click for token reference information">
+                  <IconButton
+                    size="small"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setTokenInfoAnchor(e.currentTarget)
+                    }}
+                    sx={{ mr: 1 }}
+                  >
+                    <InfoIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+              </Box>
+            </AccordionSummary>
+            <AccordionDetails>
+              <TextField
+                fullWidth
+                label="Inline Web URL"
+                value={formData.inline_web_url}
+                onChange={(e) => setFormData({ ...formData, inline_web_url: e.target.value })}
+                margin="normal"
+                helperText="Embedded webpage/console rendered directly in the user portal (supports ${TOKEN} references)."
+                placeholder="https://console.example.com/app?target=${URL}"
+              />
+              <TextField
+                fullWidth
+                label="Inline SSH Console URL"
+                value={formData.inline_ssh_url}
+                onChange={(e) => setFormData({ ...formData, inline_ssh_url: e.target.value })}
+                margin="normal"
+                helperText="URL to a web-based SSH console (supports ${TOKEN} references)."
+                placeholder="https://ssh.example.com/connect?host=${SSH_PATH}"
+              />
+              <TextField
+                fullWidth
+                label="Inline VNC Console URL"
+                value={formData.inline_vnc_url}
+                onChange={(e) => setFormData({ ...formData, inline_vnc_url: e.target.value })}
+                margin="normal"
+                helperText="URL to a web-based VNC console (supports ${TOKEN} references)."
+                placeholder="https://vnc.example.com/session/${INLINE_VNC_URL}"
+              />
+              <TextField
+                fullWidth
+                select
+                label="Inline Proxy Mode"
+                value={formData.inline_proxy_mode}
+                onChange={(e) => setFormData({ ...formData, inline_proxy_mode: e.target.value })}
+                margin="normal"
+              >
+                <MenuItem value="none">None (direct)</MenuItem>
+                <MenuItem value="direct">Direct (same as URL)</MenuItem>
+                <MenuItem value="reverse_http">Reverse HTTP Proxy</MenuItem>
+                <MenuItem value="ssh_tunnel">SSH Tunnel (manual instructions)</MenuItem>
+              </TextField>
+              <TextField
+                fullWidth
+                select
+                label="Inline Proxy Authentication"
+                value={formData.inline_proxy_auth}
+                onChange={(e) => setFormData({ ...formData, inline_proxy_auth: e.target.value })}
+                margin="normal"
+              >
+                <MenuItem value="none">None</MenuItem>
+                <MenuItem value="basic">HTTP Basic</MenuItem>
+                <MenuItem value="ssh_key">SSH Key</MenuItem>
+                <MenuItem value="certificate">Client Certificate</MenuItem>
+              </TextField>
+              <TextField
+                fullWidth
+                label="Inline Console Height (px)"
+                type="number"
+                value={formData.inline_console_height}
+                onChange={(e) => setFormData({ ...formData, inline_console_height: Number(e.target.value) })}
+                margin="normal"
+                helperText="Height for embedded iframes (default 480px)."
+              />
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={formData.requires_user_credential}
+                    onChange={(e) => setFormData({ ...formData, requires_user_credential: e.target.checked })}
+                  />
+                }
+                label="Require user-provided credential"
+              />
+              <TextField
+                fullWidth
+                select
+                label="Required Credential Type"
+                value={formData.required_credential_type}
+                onChange={(e) => setFormData({ ...formData, required_credential_type: e.target.value })}
+                margin="normal"
+                disabled={!formData.requires_user_credential}
+              >
+                <MenuItem value="">Select credential type</MenuItem>
+                <MenuItem value="ssh_key">SSH Key</MenuItem>
+                <MenuItem value="certificate">Certificate</MenuItem>
+              </TextField>
+              <TextField
+                fullWidth
+                label="Proxy / Console Instructions"
+                value={formData.inline_proxy_instructions}
+                onChange={(e) => setFormData({ ...formData, inline_proxy_instructions: e.target.value })}
+                margin="normal"
+                multiline
+                rows={4}
+                helperText="Markdown/plain text shown to users (supports ${TOKEN} references)."
+              />
+            </AccordionDetails>
+          </Accordion>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenDialog(false)}>Cancel</Button>
@@ -400,6 +652,41 @@ export default function SiteManagement() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <Popover
+        open={Boolean(tokenInfoAnchor)}
+        anchorEl={tokenInfoAnchor}
+        onClose={() => setTokenInfoAnchor(null)}
+        anchorOrigin={{
+          vertical: 'bottom',
+          horizontal: 'left',
+        }}
+        transformOrigin={{
+          vertical: 'top',
+          horizontal: 'left',
+        }}
+      >
+        <Box sx={{ p: 2, maxWidth: 400 }}>
+          <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600 }}>
+            Token Reference
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            You can reference site fields using tokens (e.g., <code>${'{URL}'}</code>, <code>${'{INLINE_SSH_URL}'}</code>).
+          </Typography>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+            {SITE_TOKENS.map((token) => (
+              <Box key={token.token} sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+                <Typography variant="body2" sx={{ fontFamily: 'monospace', fontWeight: 600, minWidth: 140 }}>
+                  {token.token}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {token.desc}
+                </Typography>
+              </Box>
+            ))}
+          </Box>
+        </Box>
+      </Popover>
 
       <Dialog open={!!openGroupDialog} onClose={() => setOpenGroupDialog(null)} maxWidth="sm" fullWidth>
         <DialogTitle>Manage Groups for {openGroupDialog?.name}</DialogTitle>
