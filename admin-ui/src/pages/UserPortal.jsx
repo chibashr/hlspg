@@ -12,11 +12,17 @@ import {
   Chip,
   Alert,
   CircularProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
 } from '@mui/material'
 import LaunchIcon from '@mui/icons-material/Launch'
 import PersonIcon from '@mui/icons-material/Person'
 import LinkIcon from '@mui/icons-material/Link'
 import VpnLockIcon from '@mui/icons-material/VpnLock'
+import LockIcon from '@mui/icons-material/Lock'
 import axios from 'axios'
 import { extractCNFromDN } from '../utils/ldap'
 
@@ -28,6 +34,15 @@ export default function UserPortal() {
   const [sites, setSites] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false)
+  const [passwordData, setPasswordData] = useState({
+    current_password: '',
+    new_password: '',
+    confirm_password: '',
+  })
+  const [passwordError, setPasswordError] = useState('')
+  const [passwordSuccess, setPasswordSuccess] = useState('')
+  const [changingPassword, setChangingPassword] = useState(false)
 
   useEffect(() => {
     loadData()
@@ -53,6 +68,49 @@ export default function UserPortal() {
       }
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handlePasswordChange = async () => {
+    setPasswordError('')
+    setPasswordSuccess('')
+
+    // Validation
+    if (!passwordData.current_password || !passwordData.new_password || !passwordData.confirm_password) {
+      setPasswordError('All fields are required')
+      return
+    }
+
+    if (passwordData.new_password.length < 8) {
+      setPasswordError('New password must be at least 8 characters long')
+      return
+    }
+
+    if (passwordData.new_password !== passwordData.confirm_password) {
+      setPasswordError('New passwords do not match')
+      return
+    }
+
+    setChangingPassword(true)
+    try {
+      await axios.post('/api/profile/change-password', {
+        current_password: passwordData.current_password,
+        new_password: passwordData.new_password,
+      })
+      setPasswordSuccess('Password changed successfully')
+      setPasswordData({
+        current_password: '',
+        new_password: '',
+        confirm_password: '',
+      })
+      setTimeout(() => {
+        setPasswordDialogOpen(false)
+        setPasswordSuccess('')
+      }, 2000)
+    } catch (err) {
+      setPasswordError(err.response?.data?.error || 'Failed to change password')
+    } finally {
+      setChangingPassword(false)
     }
   }
 
@@ -105,6 +163,18 @@ export default function UserPortal() {
                   size="small" 
                   color={profile.user.auth_type === 'LDAP' ? 'primary' : 'default'}
                 />
+              </Box>
+            )}
+            {profile?.user?.auth_type === 'Local' && (
+              <Box sx={{ mt: 2 }}>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<LockIcon />}
+                  onClick={() => setPasswordDialogOpen(true)}
+                >
+                  Change Password
+                </Button>
               </Box>
             )}
             {profile?.roles && profile.roles.length > 0 && (
@@ -298,6 +368,62 @@ export default function UserPortal() {
           </Paper>
         </Grid>
       </Grid>
+
+      {/* Password Change Dialog */}
+      <Dialog open={passwordDialogOpen} onClose={() => setPasswordDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Change Password</DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+            {passwordError && (
+              <Alert severity="error">{passwordError}</Alert>
+            )}
+            {passwordSuccess && (
+              <Alert severity="success">{passwordSuccess}</Alert>
+            )}
+            <TextField
+              label="Current Password"
+              type="password"
+              value={passwordData.current_password}
+              onChange={(e) => setPasswordData({ ...passwordData, current_password: e.target.value })}
+              fullWidth
+              required
+              disabled={changingPassword}
+            />
+            <TextField
+              label="New Password"
+              type="password"
+              value={passwordData.new_password}
+              onChange={(e) => setPasswordData({ ...passwordData, new_password: e.target.value })}
+              fullWidth
+              required
+              disabled={changingPassword}
+              helperText="Must be at least 8 characters long"
+            />
+            <TextField
+              label="Confirm New Password"
+              type="password"
+              value={passwordData.confirm_password}
+              onChange={(e) => setPasswordData({ ...passwordData, confirm_password: e.target.value })}
+              fullWidth
+              required
+              disabled={changingPassword}
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => {
+            setPasswordDialogOpen(false)
+            setPasswordData({ current_password: '', new_password: '', confirm_password: '' })
+            setPasswordError('')
+            setPasswordSuccess('')
+          }} disabled={changingPassword}>
+            Cancel
+          </Button>
+          <Button onClick={handlePasswordChange} variant="contained" disabled={changingPassword}>
+            {changingPassword ? 'Changing...' : 'Change Password'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   )
 }
