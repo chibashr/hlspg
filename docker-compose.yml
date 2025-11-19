@@ -1,0 +1,99 @@
+services:
+  portal:
+    build:
+      context: .
+      dockerfile: portal/Dockerfile
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=postgresql://portal:portalpass@postgres:5432/portal
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=${SECRET_KEY:-change-me-in-production}
+      - LDAP_URL=${LDAP_URL:-}
+      - LDAP_USE_TLS=${LDAP_USE_TLS:-true}
+      - LDAP_BIND_DN=${LDAP_BIND_DN:-}
+      - LDAP_BIND_PASSWORD=${LDAP_BIND_PASSWORD:-}
+      - LDAP_BASE_DN=${LDAP_BASE_DN:-}
+      - LDAP_USER_DN=${LDAP_USER_DN:-}
+      - LDAP_GROUP_DN=${LDAP_GROUP_DN:-}
+      - LDAP_USER_FILTER=${LDAP_USER_FILTER:-}
+      - LDAP_GROUP_ATTRIBUTE=${LDAP_GROUP_ATTRIBUTE:-memberOf}
+      - LDAP_CA_CERT=${LDAP_CA_CERT:-/run/secrets/ldap_ca.pem}
+      - LDAP_SEARCH_TIMEOUT=${LDAP_SEARCH_TIMEOUT:-5}
+      - SESSION_TYPE=redis
+      - SESSION_REDIS_URL=redis://redis:6379/0
+      - SESSION_COOKIE_SECURE=${SESSION_COOKIE_SECURE:-false}
+      - SESSION_COOKIE_SAMESITE=${SESSION_COOKIE_SAMESITE:-Lax}
+      - SESSION_TIMEOUT_MINUTES=${SESSION_TIMEOUT_MINUTES:-120}
+      - INITIAL_LOCAL_ADMIN_USERNAME=${INITIAL_LOCAL_ADMIN_USERNAME:-portal-admin}
+      - INITIAL_LOCAL_ADMIN_PASSWORD=${INITIAL_LOCAL_ADMIN_PASSWORD:-}
+      - ALLOW_LOCAL_FALLBACK=${ALLOW_LOCAL_FALLBACK:-true}
+      - OIDC_ISSUER_URL=${OIDC_ISSUER_URL:-}
+      - OIDC_CLIENT_ID=${OIDC_CLIENT_ID:-}
+      - OIDC_CLIENT_SECRET=${OIDC_CLIENT_SECRET:-}
+      - RATE_LIMIT_REQUESTS=${RATE_LIMIT_REQUESTS:-10}
+      - RATE_LIMIT_PERIOD=${RATE_LIMIT_PERIOD:-60}
+      - ALLOWED_PROXIED_HOSTS=${ALLOWED_PROXIED_HOSTS:-chibashr.local,*.chibashr.local}
+      - MAINTAINER_EMAIL=${MAINTAINER_EMAIL:-}
+      - DB_AUTO_MIGRATE=${DB_AUTO_MIGRATE:-false}
+      - FLASK_ENV=${FLASK_ENV:-production}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - LOG_TO_STDOUT=true
+    volumes:
+      - ./portal/config:/app/config:ro
+      - ./portal/log:/var/log/portal
+      - ./portal/secrets:/run/secrets:ro
+      - ./portal/certs:/app/certs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    extra_hosts:
+      - "dc01-2022.chibashr.local:10.1.1.45"
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  postgres:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: portal
+      POSTGRES_USER: portal
+      POSTGRES_PASSWORD: portalpass
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U portal"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - ./data/redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+# Optional: Nginx Proxy Manager (commented out - use your existing NPM)
+#  npm:
+#    image: jc21/nginx-proxy-manager:latest
+#    restart: unless-stopped
+#    ports:
+#      - "80:80"
+#      - "443:443"
+#      - "81:81"
+#    volumes:
+#      - ./data/npm:/data
+#      - ./data/npm/letsencrypt:/etc/letsencrypt
+
