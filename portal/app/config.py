@@ -88,7 +88,7 @@ class Config:
     RATE_LIMIT_PERIOD = int(os.getenv('RATE_LIMIT_PERIOD', '60'))
     
     # Security
-    ALLOWED_PROXIED_HOSTS = [h.strip() for h in os.getenv('ALLOWED_PROXIED_HOSTS', 'chibashr.local').split(',')]
+    ALLOWED_PROXIED_HOSTS = [h.strip() for h in os.getenv('ALLOWED_PROXIED_HOSTS', 'example.com').split(',')]
     MAINTAINER_EMAIL = os.getenv('MAINTAINER_EMAIL', '')
     
     # Database Migration

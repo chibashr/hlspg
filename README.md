@@ -32,7 +32,7 @@ Users -> Nginx Proxy Manager -> Portal (Flask) -> Postgres
    The React app is built inside Docker, so no local Node.js installation is required.
 
 3. Access the portal:
-   - Portal: https://chibashr.local (or http://localhost:3000)
+   - Portal: https://example.com (or http://localhost:3000)
    - Initial admin: Use `INITIAL_LOCAL_ADMIN_USERNAME` and `INITIAL_LOCAL_ADMIN_PASSWORD` from `.env`
    - Note: The unified portal serves both admin and user interfaces on port 3000
 

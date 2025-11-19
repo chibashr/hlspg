@@ -37,7 +37,7 @@
 
 ### 2. First Login
 
-1. Access portal at `https://chibashr.local` (or `http://localhost:3000`)
+1. Access portal at `https://example.com` (or `http://localhost:3000`)
 2. Login with initial admin credentials
 3. Navigate to Admin > LDAP Setup
 4. Test LDAP connection
