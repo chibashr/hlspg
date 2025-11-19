@@ -27,9 +27,6 @@ services:
       - INITIAL_LOCAL_ADMIN_USERNAME=${INITIAL_LOCAL_ADMIN_USERNAME:-portal-admin}
       - INITIAL_LOCAL_ADMIN_PASSWORD=${INITIAL_LOCAL_ADMIN_PASSWORD:-}
       - ALLOW_LOCAL_FALLBACK=${ALLOW_LOCAL_FALLBACK:-true}
-      - OIDC_ISSUER_URL=${OIDC_ISSUER_URL:-}
-      - OIDC_CLIENT_ID=${OIDC_CLIENT_ID:-}
-      - OIDC_CLIENT_SECRET=${OIDC_CLIENT_SECRET:-}
       - RATE_LIMIT_REQUESTS=${RATE_LIMIT_REQUESTS:-10}
       - RATE_LIMIT_PERIOD=${RATE_LIMIT_PERIOD:-60}
       - ALLOWED_PROXIED_HOSTS=${ALLOWED_PROXIED_HOSTS:-example.com,*.example.com}
@@ -49,7 +46,7 @@ services:
       redis:
         condition: service_healthy
     extra_hosts:
-      - "dc01.example.com:192.168.1.100"
+      - "dc01-2022.chibashr.local:10.1.1.45"
     ports:
       - "3000:3000"
     healthcheck:
