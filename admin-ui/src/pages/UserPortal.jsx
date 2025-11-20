@@ -525,6 +525,57 @@ export default function UserPortal() {
                               </Box>
                             )}
                           </Box>
+                        </CardContent>
+                        <CardActions sx={{ justifyContent: 'space-between', px: 2, pb: 2 }}>
+                          <Box sx={{ display: 'flex', gap: 1 }}>
+                            <Button
+                              size="small"
+                              variant="contained"
+                              startIcon={hasProxy ? <VpnLockIcon /> : <LaunchIcon />}
+                              href={accessUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              {hasProxy ? 'Open via Proxy' : 'Open Site'}
+                            </Button>
+                            {site.console_enabled && (
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                startIcon={<TerminalIcon />}
+                                onClick={() => {
+                                  setSelectedSite(site)
+                                  setConsoleOpen(true)
+                                }}
+                              >
+                                Console
+                              </Button>
+                            )}
+                          </Box>
+                          {hasProxy && (
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              startIcon={<LinkIcon />}
+                              href={site.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              title="Direct access (bypass proxy)"
+                            >
+                              Direct
+                            </Button>
+                          )}
+                        </CardActions>
+                      </Card>
+                    </Grid>
+                  )
+                })}
+              </Grid>
+            )}
+          </Paper>
+        </Grid>
+      </Grid>
+
       <Console
         open={consoleOpen}
         onClose={() => {
