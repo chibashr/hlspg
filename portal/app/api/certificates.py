@@ -26,7 +26,15 @@ def list_certificates():
     if error:
         return error
     
-    certificates = Certificate.query.filter_by(enabled=True).order_by(Certificate.name).all()
+    try:
+        certificates = Certificate.query.filter_by(enabled=True).order_by(Certificate.name).all()
+    except Exception as e:
+        # Handle case where certificates table doesn't exist yet (migration not run)
+        # Return empty list instead of error
+        return jsonify({
+            'certificates': []
+        }), 200
+    
     return jsonify({
         'certificates': [{
             'id': c.id,
@@ -45,7 +53,11 @@ def get_certificate(certificate_id):
     if error:
         return error
     
-    certificate = Certificate.query.filter_by(id=certificate_id, enabled=True).first_or_404()
+    try:
+        certificate = Certificate.query.filter_by(id=certificate_id, enabled=True).first_or_404()
+    except Exception as e:
+        return jsonify({'error': 'Certificate not found'}), 404
+    
     return jsonify({
         'id': certificate.id,
         'name': certificate.name,
@@ -62,7 +74,10 @@ def download_certificate(certificate_id):
     if error:
         return error
     
-    certificate = Certificate.query.filter_by(id=certificate_id, enabled=True).first_or_404()
+    try:
+        certificate = Certificate.query.filter_by(id=certificate_id, enabled=True).first_or_404()
+    except Exception as e:
+        return jsonify({'error': 'Certificate not found'}), 404
     
     # Create a BytesIO object with the certificate data
     cert_file = BytesIO(certificate.certificate_data.encode('utf-8'))
