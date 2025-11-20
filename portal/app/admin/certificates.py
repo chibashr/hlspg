@@ -1,11 +1,10 @@
 """Certificate management endpoints."""
-from flask import request, jsonify, send_file
+from flask import request, jsonify, send_file, session
 from io import BytesIO
 from . import admin_bp
 from ..db import db
-from ..models import Certificate, AuditLog
+from ..models import Certificate, AuditLog, User
 from ..utils.rbac import require_admin
-from ..utils.auth import get_current_user
 
 
 @admin_bp.route('/certificates', methods=['GET'])
@@ -62,10 +61,10 @@ def create_certificate():
     db.session.add(certificate)
     
     # Log the action
-    user = get_current_user()
-    if user:
+    user_id = session.get('user_id')
+    if user_id:
         audit_log = AuditLog(
-            user_id=user.id,
+            user_id=user_id,
             ip=request.remote_addr,
             action='certificate_created',
             details={'certificate_id': certificate.id, 'name': name}
@@ -139,10 +138,10 @@ def update_certificate(certificate_id):
         certificate.enabled = bool(data.get('enabled'))
     
     # Log the action
-    user = get_current_user()
-    if user:
+    user_id = session.get('user_id')
+    if user_id:
         audit_log = AuditLog(
-            user_id=user.id,
+            user_id=user_id,
             ip=request.remote_addr,
             action='certificate_updated',
             details={'certificate_id': certificate.id, 'name': certificate.name}
@@ -170,10 +169,10 @@ def delete_certificate(certificate_id):
     name = certificate.name
     
     # Log the action
-    user = get_current_user()
-    if user:
+    user_id = session.get('user_id')
+    if user_id:
         audit_log = AuditLog(
-            user_id=user.id,
+            user_id=user_id,
             ip=request.remote_addr,
             action='certificate_deleted',
             details={'certificate_id': certificate.id, 'name': name}
