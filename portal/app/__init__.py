@@ -265,9 +265,9 @@ def create_app(config_class=Config):
         """Handle WebSocket disconnection."""
         pass
     
-    # Bootstrap on first run
+    # Bootstrap on first run - ensure tables exist and create default data
     with app.app_context():
-        bootstrap_app(db)
+        bootstrap_app(db, migrate)
     
     # Store socketio in app for access
     app.socketio = socketio

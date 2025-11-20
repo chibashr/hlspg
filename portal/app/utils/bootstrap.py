@@ -6,12 +6,66 @@ from .security import hash_password
 from ..models import Role, User
 
 
-def bootstrap_app(db):
+def ensure_tables_exist(db, migrate):
+    """
+    Ensure all database tables exist by running migrations or creating them.
+    """
+    from flask import current_app
+    
+    try:
+        inspector = inspect(db.engine)
+        tables = inspector.get_table_names()
+        
+        # Check if core tables exist
+        core_tables = ['roles', 'users', 'sites']
+        missing_tables = [t for t in core_tables if t not in tables]
+        
+        if missing_tables:
+            current_app.logger.info(f"Bootstrapping: Missing tables detected: {missing_tables}")
+            current_app.logger.info("Bootstrapping: Attempting to create tables via migrations...")
+            
+            try:
+                # Try to run migrations using Alembic via Flask-Migrate CLI
+                from flask_migrate import upgrade as migrate_upgrade
+                migrate_upgrade()
+                current_app.logger.info("Bootstrapping: Migrations completed successfully")
+            except Exception as e:
+                current_app.logger.warning(f"Bootstrapping: Migration upgrade failed: {e}")
+                current_app.logger.info("Bootstrapping: Falling back to create_all()...")
+                
+                try:
+                    # Fallback: use SQLAlchemy's create_all
+                    # This will create all tables defined in models
+                    db.create_all()
+                    current_app.logger.info("Bootstrapping: Tables created using create_all()")
+                except Exception as e2:
+                    current_app.logger.error(f"Bootstrapping: Failed to create tables: {e2}")
+                    raise
+        else:
+            current_app.logger.debug("Bootstrapping: All core tables exist")
+            
+    except (ProgrammingError, OperationalError) as e:
+        current_app.logger.error(f"Bootstrapping: Database connection error: {e}")
+        raise
+    except Exception as e:
+        current_app.logger.error(f"Bootstrapping: Unexpected error checking/creating tables: {e}")
+        raise
+
+
+def bootstrap_app(db, migrate=None):
     """
     Bootstrap the application on first run.
     Creates default roles and initial admin user.
     """
     from flask import current_app
+    
+    # Ensure tables exist first
+    if migrate:
+        try:
+            ensure_tables_exist(db, migrate)
+        except Exception as e:
+            current_app.logger.error(f"Bootstrapping: Could not ensure tables exist: {e}")
+            return
     
     # Check if tables exist first
     try:
@@ -20,7 +74,7 @@ def bootstrap_app(db):
         
         # If tables don't exist, skip bootstrap (migrations need to run first)
         if 'roles' not in tables:
-            current_app.logger.info("Bootstrapping: Database tables not found, skipping bootstrap (run migrations first)")
+            current_app.logger.info("Bootstrapping: Database tables not found, skipping bootstrap")
             return
     except (ProgrammingError, OperationalError) as e:
         current_app.logger.warning(f"Bootstrapping: Could not check tables: {e}, skipping bootstrap")
