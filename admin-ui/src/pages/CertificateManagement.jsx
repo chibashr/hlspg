@@ -26,6 +26,7 @@ import AddIcon from '@mui/icons-material/Add'
 import EditIcon from '@mui/icons-material/Edit'
 import DeleteIcon from '@mui/icons-material/Delete'
 import SecurityIcon from '@mui/icons-material/Security'
+import UploadFileIcon from '@mui/icons-material/UploadFile'
 import axios from 'axios'
 
 // Configure axios to send cookies with requests
@@ -37,6 +38,7 @@ export default function CertificateManagement() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [openDialog, setOpenDialog] = useState(false)
+  const [uploadDialog, setUploadDialog] = useState(false)
   const [editingCertificate, setEditingCertificate] = useState(null)
   const [formData, setFormData] = useState({
     name: '',
@@ -45,6 +47,14 @@ export default function CertificateManagement() {
     filename: '',
     enabled: true,
   })
+  const [uploadData, setUploadData] = useState({
+    name: '',
+    description: '',
+    filename: '',
+    enabled: true,
+  })
+  const [selectedFile, setSelectedFile] = useState(null)
+  const [uploading, setUploading] = useState(false)
 
   useEffect(() => {
     loadCertificates()
@@ -174,13 +184,33 @@ export default function CertificateManagement() {
             Certificate Management
           </Typography>
         </Box>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => handleOpenDialog()}
-        >
-          Add Certificate
-        </Button>
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <Button
+            variant="outlined"
+            startIcon={<UploadFileIcon />}
+            onClick={() => {
+              setUploadDialog(true)
+              setUploadData({
+                name: '',
+                description: '',
+                filename: '',
+                enabled: true,
+              })
+              setSelectedFile(null)
+              setError('')
+              setSuccess('')
+            }}
+          >
+            Upload Certificate
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => handleOpenDialog()}
+          >
+            Add Certificate
+          </Button>
+        </Box>
       </Box>
 
       {error && (
@@ -333,6 +363,170 @@ export default function CertificateManagement() {
           <Button onClick={handleCloseDialog}>Cancel</Button>
           <Button onClick={handleSave} variant="contained">
             {editingCertificate ? 'Update' : 'Create'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Upload Certificate Dialog */}
+      <Dialog open={uploadDialog} onClose={() => !uploading && setUploadDialog(false)} maxWidth="md" fullWidth>
+        <DialogTitle>Upload Certificate File</DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+            <Box>
+              <input
+                accept=".pem,.crt,.cer,.cert"
+                style={{ display: 'none' }}
+                id="certificate-file-upload"
+                type="file"
+                onChange={handleFileSelect}
+              />
+              <label htmlFor="certificate-file-upload">
+                <Button
+                  variant="outlined"
+                  component="span"
+                  startIcon={<UploadFileIcon />}
+                  fullWidth
+                  sx={{ mb: 2 }}
+                >
+                  {selectedFile ? selectedFile.name : 'Select Certificate File (.pem, .crt, .cer, .cert)'}
+                </Button>
+              </label>
+              {selectedFile && (
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 2 }}>
+                  Selected: {selectedFile.name} ({(selectedFile.size / 1024).toFixed(2)} KB)
+                </Typography>
+              )}
+            </Box>
+            <TextField
+              fullWidth
+              label="Certificate Name"
+              value={uploadData.name}
+              onChange={(e) => setUploadData({ ...uploadData, name: e.target.value })}
+              required
+              helperText="A descriptive name for this certificate"
+            />
+            <TextField
+              fullWidth
+              label="Description"
+              value={uploadData.description}
+              onChange={(e) => setUploadData({ ...uploadData, description: e.target.value })}
+              multiline
+              rows={2}
+              helperText="Instructions for users on how to install this certificate"
+            />
+            <TextField
+              fullWidth
+              label="Filename"
+              value={uploadData.filename}
+              onChange={(e) => setUploadData({ ...uploadData, filename: e.target.value })}
+              required
+              helperText="Suggested filename for download (defaults to uploaded filename)"
+            />
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={uploadData.enabled}
+                  onChange={(e) => setUploadData({ ...uploadData, enabled: e.target.checked })}
+                />
+              }
+              label="Enabled (visible to users)"
+            />
+            {error && (
+              <Alert severity="error">{error}</Alert>
+            )}
+            {success && (
+              <Alert severity="success">{success}</Alert>
+            )}
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setUploadDialog(false)} disabled={uploading}>
+            Cancel
+          </Button>
+          <Button onClick={handleUpload} variant="contained" disabled={uploading || !selectedFile}>
+            {uploading ? 'Uploading...' : 'Upload'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Upload Certificate Dialog */}
+      <Dialog open={uploadDialog} onClose={() => !uploading && setUploadDialog(false)} maxWidth="md" fullWidth>
+        <DialogTitle>Upload Certificate File</DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+            <Box>
+              <input
+                accept=".pem,.crt,.cer,.cert"
+                style={{ display: 'none' }}
+                id="certificate-file-upload"
+                type="file"
+                onChange={handleFileSelect}
+              />
+              <label htmlFor="certificate-file-upload">
+                <Button
+                  variant="outlined"
+                  component="span"
+                  startIcon={<UploadFileIcon />}
+                  fullWidth
+                  sx={{ mb: 2 }}
+                >
+                  {selectedFile ? selectedFile.name : 'Select Certificate File (.pem, .crt, .cer, .cert)'}
+                </Button>
+              </label>
+              {selectedFile && (
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 2 }}>
+                  Selected: {selectedFile.name} ({(selectedFile.size / 1024).toFixed(2)} KB)
+                </Typography>
+              )}
+            </Box>
+            <TextField
+              fullWidth
+              label="Certificate Name"
+              value={uploadData.name}
+              onChange={(e) => setUploadData({ ...uploadData, name: e.target.value })}
+              required
+              helperText="A descriptive name for this certificate"
+            />
+            <TextField
+              fullWidth
+              label="Description"
+              value={uploadData.description}
+              onChange={(e) => setUploadData({ ...uploadData, description: e.target.value })}
+              multiline
+              rows={2}
+              helperText="Instructions for users on how to install this certificate"
+            />
+            <TextField
+              fullWidth
+              label="Filename"
+              value={uploadData.filename}
+              onChange={(e) => setUploadData({ ...uploadData, filename: e.target.value })}
+              required
+              helperText="Suggested filename for download (defaults to uploaded filename)"
+            />
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={uploadData.enabled}
+                  onChange={(e) => setUploadData({ ...uploadData, enabled: e.target.checked })}
+                />
+              }
+              label="Enabled (visible to users)"
+            />
+            {error && (
+              <Alert severity="error">{error}</Alert>
+            )}
+            {success && (
+              <Alert severity="success">{success}</Alert>
+            )}
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setUploadDialog(false)} disabled={uploading}>
+            Cancel
+          </Button>
+          <Button onClick={handleUpload} variant="contained" disabled={uploading || !selectedFile}>
+            {uploading ? 'Uploading...' : 'Upload'}
           </Button>
         </DialogActions>
       </Dialog>

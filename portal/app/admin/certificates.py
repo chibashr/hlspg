@@ -1,6 +1,8 @@
 """Certificate management endpoints."""
 from flask import request, jsonify, send_file, session
 from io import BytesIO
+from pathlib import Path
+from werkzeug.utils import secure_filename
 from . import admin_bp
 from ..db import db
 from ..models import Certificate, AuditLog, User
@@ -25,10 +27,81 @@ def list_certificates():
     }), 200
 
 
+@admin_bp.route('/certificates/upload', methods=['POST'])
+@require_admin
+def upload_certificate():
+    """Upload a certificate file (PEM or CRT)."""
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file provided'}), 400
+    
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'error': 'No file selected'}), 400
+    
+    # Validate file extension
+    if not file.filename.lower().endswith(('.pem', '.crt', '.cer', '.cert')):
+        return jsonify({'error': 'Invalid file type. Only .pem, .crt, .cer, .cert files are allowed'}), 400
+    
+    # Get form data
+    name = request.form.get('name', '').strip()
+    description = request.form.get('description', '').strip()
+    enabled = request.form.get('enabled', 'true').lower() == 'true'
+    
+    if not name:
+        # Use filename as default name if not provided
+        name = Path(file.filename).stem
+    
+    # Read and validate certificate data
+    try:
+        certificate_data = file.read().decode('utf-8').strip()
+    except UnicodeDecodeError:
+        return jsonify({'error': 'Invalid file encoding. Certificate must be text-based (PEM format)'}), 400
+    
+    # Validate certificate format
+    if not (certificate_data.startswith('-----BEGIN') and '-----END' in certificate_data):
+        return jsonify({'error': 'Invalid certificate format. File must be in PEM format (-----BEGIN ... -----END ...)'}), 400
+    
+    # Use original filename or derive from name
+    filename = request.form.get('filename', '').strip() or file.filename
+    
+    certificate = Certificate(
+        name=name,
+        description=description,
+        certificate_data=certificate_data,
+        filename=filename,
+        enabled=enabled
+    )
+    
+    db.session.add(certificate)
+    
+    # Log the action
+    user_id = session.get('user_id')
+    if user_id:
+        audit_log = AuditLog(
+            user_id=user_id,
+            ip=request.remote_addr,
+            action='certificate_created',
+            details={'certificate_id': certificate.id, 'name': name, 'source': 'file_upload'}
+        )
+        db.session.add(audit_log)
+    
+    db.session.commit()
+    
+    return jsonify({
+        'id': certificate.id,
+        'name': certificate.name,
+        'description': certificate.description,
+        'filename': certificate.filename,
+        'enabled': certificate.enabled,
+        'created_at': certificate.created_at.isoformat() if certificate.created_at else None,
+        'updated_at': certificate.updated_at.isoformat() if certificate.updated_at else None
+    }), 201
+
+
 @admin_bp.route('/certificates', methods=['POST'])
 @require_admin
 def create_certificate():
-    """Create a certificate."""
+    """Create a certificate from pasted data."""
     data = request.get_json()
     if not data:
         return jsonify({'error': 'Request body is required'}), 400
