@@ -133,8 +133,9 @@ def create_app(config_class=Config):
     # Exempt all admin API endpoints from CSRF (admin-only, already protected by auth)
     from .admin.sites import create_site, update_site, delete_site, add_site_group, remove_site_group
     from .admin.role_mappings import create_role_mapping, delete_role_mapping
-    from .admin.users import refresh_user, update_user
+    from .admin.users import refresh_user, update_user, change_user_password
     from .admin.ldap_groups import search_ldap_groups
+    from .api.profile import change_password
     csrf.exempt(create_site)
     csrf.exempt(update_site)
     csrf.exempt(delete_site)
@@ -144,7 +145,9 @@ def create_app(config_class=Config):
     csrf.exempt(delete_role_mapping)
     csrf.exempt(refresh_user)
     csrf.exempt(update_user)
+    csrf.exempt(change_user_password)
     csrf.exempt(search_ldap_groups)
+    csrf.exempt(change_password)
     
     # Handle CSRF errors gracefully for setup endpoint (fallback)
     # Only catch CSRFError specifically, not all exceptions
