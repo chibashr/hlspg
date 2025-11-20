@@ -167,6 +167,80 @@ export default function CertificateManagement() {
     }
   }
 
+  const handleFileSelect = (event) => {
+    const file = event.target.files[0]
+    if (!file) return
+
+    if (!file.name.match(/\.(pem|crt|cer|cert)$/i)) {
+      setError('Invalid file type. Only .pem, .crt, .cer, .cert files are allowed')
+      return
+    }
+
+    setSelectedFile(file)
+    setError('')
+
+    // Auto-fill filename if not provided
+    if (!uploadData.filename) {
+      setUploadData({ ...uploadData, filename: file.name })
+    }
+
+    // Auto-fill name if not provided (use filename without extension)
+    if (!uploadData.name) {
+      const nameWithoutExt = file.name.replace(/\.[^/.]+$/, '')
+      setUploadData({ ...uploadData, name: nameWithoutExt })
+    }
+  }
+
+  const handleUpload = async () => {
+    if (!selectedFile) {
+      setError('Please select a certificate file')
+      return
+    }
+
+    if (!uploadData.name) {
+      setError('Certificate name is required')
+      return
+    }
+
+    setUploading(true)
+    setError('')
+    setSuccess('')
+
+    try {
+      const formData = new FormData()
+      formData.append('file', selectedFile)
+      formData.append('name', uploadData.name)
+      formData.append('description', uploadData.description || '')
+      formData.append('filename', uploadData.filename || selectedFile.name)
+      formData.append('enabled', uploadData.enabled.toString())
+
+      await axios.post('/api/admin/certificates/upload', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      })
+
+      setSuccess('Certificate uploaded successfully')
+      await loadCertificates()
+      setTimeout(() => {
+        setUploadDialog(false)
+        setSelectedFile(null)
+        setUploadData({
+          name: '',
+          description: '',
+          filename: '',
+          enabled: true,
+        })
+        setSuccess('')
+      }, 1000)
+    } catch (err) {
+      const errorMessage = err.response?.data?.error || err.message || 'Failed to upload certificate'
+      setError(errorMessage)
+    } finally {
+      setUploading(false)
+    }
+  }
+
   if (loading && certificates.length === 0) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
