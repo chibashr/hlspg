@@ -22,25 +22,18 @@ def ensure_tables_exist(db, migrate):
         
         if missing_tables:
             current_app.logger.info(f"Bootstrapping: Missing tables detected: {missing_tables}")
-            current_app.logger.info("Bootstrapping: Attempting to create tables via migrations...")
+            current_app.logger.info("Bootstrapping: Creating missing tables...")
             
             try:
-                # Try to run migrations using Alembic via Flask-Migrate CLI
-                from flask_migrate import upgrade as migrate_upgrade
-                migrate_upgrade()
-                current_app.logger.info("Bootstrapping: Migrations completed successfully")
+                # Use SQLAlchemy's create_all to create all tables from models
+                # This is simpler and more reliable than trying to run migrations programmatically
+                db.create_all()
+                current_app.logger.info("Bootstrapping: Tables created successfully")
             except Exception as e:
-                current_app.logger.warning(f"Bootstrapping: Migration upgrade failed: {e}")
-                current_app.logger.info("Bootstrapping: Falling back to create_all()...")
-                
-                try:
-                    # Fallback: use SQLAlchemy's create_all
-                    # This will create all tables defined in models
-                    db.create_all()
-                    current_app.logger.info("Bootstrapping: Tables created using create_all()")
-                except Exception as e2:
-                    current_app.logger.error(f"Bootstrapping: Failed to create tables: {e2}")
-                    raise
+                current_app.logger.error(f"Bootstrapping: Failed to create tables: {e}")
+                # Don't raise - allow app to start even if table creation fails
+                # The error handling in the API endpoints will handle missing tables gracefully
+                current_app.logger.warning("Bootstrapping: Continuing despite table creation failure")
         else:
             current_app.logger.debug("Bootstrapping: All core tables exist")
             
