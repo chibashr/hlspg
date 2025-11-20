@@ -135,6 +135,7 @@ def create_app(config_class=Config):
     from .admin.role_mappings import create_role_mapping, delete_role_mapping
     from .admin.users import refresh_user, update_user, change_user_password
     from .admin.ldap_groups import search_ldap_groups
+    from .admin.certificates import create_certificate, update_certificate, delete_certificate
     from .api.profile import change_password
     csrf.exempt(create_site)
     csrf.exempt(update_site)
@@ -147,6 +148,9 @@ def create_app(config_class=Config):
     csrf.exempt(update_user)
     csrf.exempt(change_user_password)
     csrf.exempt(search_ldap_groups)
+    csrf.exempt(create_certificate)
+    csrf.exempt(update_certificate)
+    csrf.exempt(delete_certificate)
     csrf.exempt(change_password)
     
     # Handle CSRF errors gracefully for setup endpoint (fallback)

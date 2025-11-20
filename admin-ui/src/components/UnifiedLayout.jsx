@@ -47,6 +47,7 @@ const adminMenuItems = [
   { text: 'Role Management', icon: <GroupIcon />, path: 'roles' },
   { text: 'Site Management', icon: <WebIcon />, path: 'sites' },
   { text: 'User Management', icon: <PeopleIcon />, path: 'users' },
+  { text: 'Certificate Management', icon: <SecurityIcon />, path: 'certificates' },
   { text: 'Audit Log', icon: <HistoryIcon />, path: 'audit' },
   { text: 'Web App Config', icon: <SettingsIcon />, path: 'webapp-config' },
   { text: 'SSO Config', icon: <VpnKeyIcon />, path: 'sso-config' },
@@ -83,7 +84,7 @@ export default function UnifiedLayout({ webappConfig }) {
         
         // Handle routing based on path and admin status
           // Admin routes - redirect non-admins to portal
-        const adminRoutes = ['/dashboard', '/ldap', '/ldap-config', '/roles', '/sites', '/users', '/audit', '/webapp-config', '/sso-config']
+        const adminRoutes = ['/dashboard', '/ldap', '/ldap-config', '/roles', '/sites', '/users', '/certificates', '/audit', '/webapp-config', '/sso-config']
         const isAdminRoute = adminRoutes.some(route => location.pathname === route || location.pathname.startsWith(route + '/'))
         
         if (isAdminRoute && !isAdmin) {

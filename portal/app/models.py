@@ -214,3 +214,17 @@ class SSOConfig(db.Model):
         CheckConstraint('id = 1', name='single_sso_config'),
     )
 
+
+class Certificate(db.Model):
+    """Admin-provided certificates for users to download and install."""
+    __tablename__ = 'certificates'
+    
+    id = Column(Integer, primary_key=True)
+    name = Column(String(255), nullable=False)
+    description = Column(Text)  # Description/instructions for users
+    certificate_data = Column(Text, nullable=False)  # PEM-encoded certificate data
+    filename = Column(String(255), nullable=False)  # Suggested filename (e.g., "ca-cert.pem")
+    enabled = Column(Boolean, default=True)  # Whether certificate is available to users
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+

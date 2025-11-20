@@ -17,6 +17,7 @@ import UserManagement from './pages/UserManagement'
 import AuditLog from './pages/AuditLog'
 import WebAppConfig from './pages/WebAppConfig'
 import SSOConfig from './pages/SSOConfig'
+import CertificateManagement from './pages/CertificateManagement'
 import axios from 'axios'
 
 function App() {
@@ -69,6 +70,7 @@ function App() {
             <Route path="audit" element={<AuditLog />} />
             <Route path="webapp-config" element={<WebAppConfig />} />
             <Route path="sso-config" element={<SSOConfig />} />
+            <Route path="certificates" element={<CertificateManagement />} />
           </Route>
         </Routes>
       </BrowserRouter>

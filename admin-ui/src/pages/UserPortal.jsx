@@ -24,6 +24,8 @@ import LaunchIcon from '@mui/icons-material/Launch'
 import LinkIcon from '@mui/icons-material/Link'
 import VpnLockIcon from '@mui/icons-material/VpnLock'
 import TerminalIcon from '@mui/icons-material/Terminal'
+import SecurityIcon from '@mui/icons-material/Security'
+import DownloadIcon from '@mui/icons-material/Download'
 import axios from 'axios'
 import { Link } from 'react-router-dom'
 import Console from '../components/Console'
@@ -69,6 +71,7 @@ const snapToEdges = (left, top, width, height) => {
 
 export default function UserPortal() {
   const [sites, setSites] = useState([])
+  const [certificates, setCertificates] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [consoleOpen, setConsoleOpen] = useState(false)
@@ -86,8 +89,12 @@ export default function UserPortal() {
 
   const loadData = async () => {
     try {
-      const sitesRes = await axios.get('/api/sites')
+      const [sitesRes, certificatesRes] = await Promise.all([
+        axios.get('/api/sites'),
+        axios.get('/api/certificates').catch(() => ({ data: { certificates: [] } })) // Certificates are optional
+      ])
       setSites(sitesRes.data.sites || [])
+      setCertificates(certificatesRes.data.certificates || [])
     } catch (err) {
       console.error('Failed to load portal data:', err)
       const errorMessage = err.response?.data?.error || err.message || 'Failed to load data'
@@ -575,6 +582,54 @@ export default function UserPortal() {
           </Paper>
         </Grid>
       </Grid>
+
+      {/* Certificates Section */}
+      {certificates.length > 0 && (
+        <Box sx={{ mt: 4 }}>
+          <Typography variant="h5" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <SecurityIcon color="primary" />
+            Certificates
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Download and install these certificates to avoid security warnings when accessing internal sites.
+          </Typography>
+          <Grid container spacing={2}>
+            {certificates.map((cert) => (
+              <Grid item xs={12} sm={6} md={4} key={cert.id}>
+                <Card>
+                  <CardContent>
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                      <Typography variant="h6" component="h3">
+                        {cert.name}
+                      </Typography>
+                      <SecurityIcon color="primary" />
+                    </Box>
+                    {cert.description && (
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                        {cert.description}
+                      </Typography>
+                    )}
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 2, fontFamily: 'monospace' }}>
+                      {cert.filename}
+                    </Typography>
+                  </CardContent>
+                  <CardActions>
+                    <Button
+                      size="small"
+                      variant="contained"
+                      startIcon={<DownloadIcon />}
+                      href={`/api/certificates/${cert.id}/download`}
+                      download={cert.filename}
+                    >
+                      Download
+                    </Button>
+                  </CardActions>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
+        </Box>
+      )}
 
       <Console
         open={consoleOpen}
