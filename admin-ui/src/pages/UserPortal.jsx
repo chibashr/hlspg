@@ -12,11 +12,6 @@ import {
   Chip,
   Alert,
   CircularProgress,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
   Tabs,
   Tab,
   Divider,
@@ -26,14 +21,12 @@ import {
   InputLabel,
 } from '@mui/material'
 import LaunchIcon from '@mui/icons-material/Launch'
-import PersonIcon from '@mui/icons-material/Person'
 import LinkIcon from '@mui/icons-material/Link'
 import VpnLockIcon from '@mui/icons-material/VpnLock'
-import LockIcon from '@mui/icons-material/Lock'
 import TerminalIcon from '@mui/icons-material/Terminal'
 import axios from 'axios'
+import { Link } from 'react-router-dom'
 import Console from '../components/Console'
-import { extractCNFromDN } from '../utils/ldap'
 
 // Configure axios to send cookies with requests
 axios.defaults.withCredentials = true
@@ -75,19 +68,9 @@ const snapToEdges = (left, top, width, height) => {
 }
 
 export default function UserPortal() {
-  const [profile, setProfile] = useState(null)
   const [sites, setSites] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false)
-  const [passwordData, setPasswordData] = useState({
-    current_password: '',
-    new_password: '',
-    confirm_password: '',
-  })
-  const [passwordError, setPasswordError] = useState('')
-  const [passwordSuccess, setPasswordSuccess] = useState('')
-  const [changingPassword, setChangingPassword] = useState(false)
   const [consoleOpen, setConsoleOpen] = useState(false)
   const [selectedSite, setSelectedSite] = useState(null)
   const [inlineWindows, setInlineWindows] = useState({})
@@ -103,11 +86,7 @@ export default function UserPortal() {
 
   const loadData = async () => {
     try {
-      const [profileRes, sitesRes] = await Promise.all([
-        axios.get('/api/profile'),
-        axios.get('/api/sites'),
-      ])
-      setProfile(profileRes.data)
+      const sitesRes = await axios.get('/api/sites')
       setSites(sitesRes.data.sites || [])
     } catch (err) {
       console.error('Failed to load portal data:', err)
@@ -121,49 +100,6 @@ export default function UserPortal() {
       }
     } finally {
       setLoading(false)
-    }
-  }
-
-  const handlePasswordChange = async () => {
-    setPasswordError('')
-    setPasswordSuccess('')
-
-    // Validation
-    if (!passwordData.current_password || !passwordData.new_password || !passwordData.confirm_password) {
-      setPasswordError('All fields are required')
-      return
-    }
-
-    if (passwordData.new_password.length < 8) {
-      setPasswordError('New password must be at least 8 characters long')
-      return
-    }
-
-    if (passwordData.new_password !== passwordData.confirm_password) {
-      setPasswordError('New passwords do not match')
-      return
-    }
-
-    setChangingPassword(true)
-    try {
-      await axios.post('/api/profile/change-password', {
-        current_password: passwordData.current_password,
-        new_password: passwordData.new_password,
-      })
-      setPasswordSuccess('Password changed successfully')
-      setPasswordData({
-        current_password: '',
-        new_password: '',
-        confirm_password: '',
-      })
-      setTimeout(() => {
-        setPasswordDialogOpen(false)
-        setPasswordSuccess('')
-      }, 2000)
-    } catch (err) {
-      setPasswordError(err.response?.data?.error || 'Failed to change password')
-    } finally {
-      setChangingPassword(false)
     }
   }
 
@@ -397,89 +333,16 @@ export default function UserPortal() {
       <Typography variant="h4" gutterBottom>
         Accessible Sites
       </Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, mb: 2 }}>
+        <Button component={Link} to="/profile" variant="outlined" size="small">
+          View Profile
+        </Button>
+        <Button component={Link} to="/credentials" variant="outlined" size="small">
+          Manage Credentials
+        </Button>
+      </Box>
 
-      <Grid container spacing={3} sx={{ mt: 2 }}>
-        {/* Profile Card */}
-        <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 3 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-              <PersonIcon sx={{ mr: 1 }} />
-              <Typography variant="h6">Profile</Typography>
-            </Box>
-            <Typography variant="body2" color="text.secondary">
-              <strong>Username:</strong> {profile?.user?.uid}
-            </Typography>
-            {profile?.user?.email && (
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                <strong>Email:</strong> {profile?.user?.email}
-              </Typography>
-            )}
-            {profile?.user?.auth_type && (
-              <Box sx={{ mt: 1 }}>
-                <Chip 
-                  label={profile.user.auth_type} 
-                  size="small" 
-                  color={profile.user.auth_type === 'LDAP' ? 'primary' : 'default'}
-                />
-              </Box>
-            )}
-            {profile?.user?.auth_type === 'Local' && (
-              <Box sx={{ mt: 2 }}>
-                <Button
-                  variant="outlined"
-                  size="small"
-                  startIcon={<LockIcon />}
-                  onClick={() => setPasswordDialogOpen(true)}
-                >
-                  Change Password
-                </Button>
-              </Box>
-            )}
-            {profile?.roles && profile.roles.length > 0 && (
-              <Box sx={{ mt: 2 }}>
-                <Typography variant="body2" color="text.secondary" gutterBottom>
-                  <strong>Roles:</strong>
-                </Typography>
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                  {profile.roles.map((role) => (
-                    <Chip key={role} label={role} size="small" />
-                  ))}
-                </Box>
-              </Box>
-            )}
-            {profile?.groups && profile.groups.length > 0 && (
-              <Box sx={{ mt: 2 }}>
-                <Typography variant="body2" color="text.secondary" gutterBottom>
-                  <strong>LDAP Groups ({profile.groups.length}):</strong>
-                </Typography>
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 1 }}>
-                  {profile.groups.map((group, idx) => {
-                    const groupName = extractCNFromDN(group, 30)
-                    return (
-                    <Chip 
-                      key={idx} 
-                        label={groupName} 
-                      size="small" 
-                      variant="outlined"
-                        title={group}
-                        sx={{
-                          maxWidth: '100%',
-                          '& .MuiChip-label': {
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                          },
-                        }}
-                    />
-                    )
-                  })}
-                </Box>
-              </Box>
-            )}
-          </Paper>
-        </Grid>
-
-        {/* Sites Card */}
+      <Grid container spacing={3}>
         <Grid item xs={12}>
           <Paper sx={{ p: 3 }}>
             {sites.length === 0 ? (
@@ -601,7 +464,7 @@ export default function UserPortal() {
 
                             {site.requires_user_credential && (
                               <Alert severity="warning" sx={{ mb: 1.5 }}>
-                                This site requires a {site.required_credential_type || 'credential'}. Upload it in the Credentials card.
+                                This site requires a {site.required_credential_type || 'credential'}. Upload it in the Credentials page.
                               </Alert>
                             )}
 
@@ -662,112 +525,6 @@ export default function UserPortal() {
                               </Box>
                             )}
                           </Box>
-                        </CardContent>
-                        <CardActions sx={{ justifyContent: 'space-between', px: 2, pb: 2 }}>
-                          <Box sx={{ display: 'flex', gap: 1 }}>
-                            <Button
-                              size="small"
-                              variant="contained"
-                              startIcon={hasProxy ? <VpnLockIcon /> : <LaunchIcon />}
-                              href={accessUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >
-                              {hasProxy ? 'Open via Proxy' : 'Open Site'}
-                            </Button>
-                            {site.console_enabled && (
-                              <Button
-                                size="small"
-                                variant="outlined"
-                                startIcon={<TerminalIcon />}
-                                onClick={() => {
-                                  setSelectedSite(site)
-                                  setConsoleOpen(true)
-                                }}
-                              >
-                                Console
-                              </Button>
-                            )}
-                          </Box>
-                          {hasProxy && (
-                            <Button
-                              size="small"
-                              variant="outlined"
-                              startIcon={<LinkIcon />}
-                              href={site.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              title="Direct access (bypass proxy)"
-                            >
-                              Direct
-                            </Button>
-                          )}
-                        </CardActions>
-                      </Card>
-                    </Grid>
-                  )
-                })}
-              </Grid>
-            )}
-          </Paper>
-        </Grid>
-      </Grid>
-
-      {/* Password Change Dialog */}
-      <Dialog open={passwordDialogOpen} onClose={() => setPasswordDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Change Password</DialogTitle>
-        <DialogContent>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
-            {passwordError && (
-              <Alert severity="error">{passwordError}</Alert>
-            )}
-            {passwordSuccess && (
-              <Alert severity="success">{passwordSuccess}</Alert>
-            )}
-            <TextField
-              label="Current Password"
-              type="password"
-              value={passwordData.current_password}
-              onChange={(e) => setPasswordData({ ...passwordData, current_password: e.target.value })}
-              fullWidth
-              required
-              disabled={changingPassword}
-            />
-            <TextField
-              label="New Password"
-              type="password"
-              value={passwordData.new_password}
-              onChange={(e) => setPasswordData({ ...passwordData, new_password: e.target.value })}
-              fullWidth
-              required
-              disabled={changingPassword}
-              helperText="Must be at least 8 characters long"
-            />
-            <TextField
-              label="Confirm New Password"
-              type="password"
-              value={passwordData.confirm_password}
-              onChange={(e) => setPasswordData({ ...passwordData, confirm_password: e.target.value })}
-              fullWidth
-              required
-              disabled={changingPassword}
-            />
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => {
-            setPasswordDialogOpen(false)
-            setPasswordData({ current_password: '', new_password: '', confirm_password: '' })
-            setPasswordError('')
-            setPasswordSuccess('')
-          }} disabled={changingPassword}>
-            Cancel
-          </Button>
-          <Button onClick={handlePasswordChange} variant="contained" disabled={changingPassword}>
-            {changingPassword ? 'Changing...' : 'Change Password'}
-          </Button>
-        </DialogActions>
-      </Dialog>
       <Console
         open={consoleOpen}
         onClose={() => {
